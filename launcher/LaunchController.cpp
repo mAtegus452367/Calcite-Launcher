@@ -96,8 +96,8 @@ void LaunchController::decideAccount()
     if (!accounts->anyAccountIsValid()) {
         // Tell the user they need to log in at least one account in order to play.
         auto reply = CustomMessageBox::selectable(m_parentWidget, tr("No Accounts"),
-                                                  tr("In order to play Minecraft, you must have at least one Microsoft "
-                                                     "account which owns Minecraft logged in. "
+                                                  tr("In order to play Minecraft, you must add at least one account "
+                                                     "(Microsoft or offline). "
                                                      "Would you like to open the account manager to add an account now?"),
                                                   QMessageBox::Information, QMessageBox::Yes | QMessageBox::No)
                          ->exec();
@@ -132,6 +132,14 @@ LaunchDecision LaunchController::decideLaunchMode()
 {
     if (!m_accountToUse || m_wantedLaunchMode == LaunchMode::Demo) {
         m_actualLaunchMode = LaunchMode::Demo;
+        return LaunchDecision::Continue;
+    }
+
+    // Calcite: offline accounts don't need a licensed account - launch the full game directly.
+    // Normal mode is kept (instead of Offline) so game files/libraries can still be downloaded;
+    // the user can still explicitly pick "Launch Offline" from the menu.
+    if (m_accountToUse->accountType() == AccountType::Offline) {
+        m_actualLaunchMode = m_wantedLaunchMode == LaunchMode::Offline ? LaunchMode::Offline : LaunchMode::Normal;
         return LaunchDecision::Continue;
     }
 
