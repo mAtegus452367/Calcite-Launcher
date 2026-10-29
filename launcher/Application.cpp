@@ -1327,11 +1327,9 @@ bool Application::createSetupWizard()
 
 bool Application::updaterEnabled()
 {
-#if defined(Q_OS_MAC)
-    return BuildConfig.UPDATER_ENABLED;
-#else
-    return BuildConfig.UPDATER_ENABLED && QFileInfo(FS::PathCombine(m_rootPath, updaterBinaryName())).isFile();
-#endif
+    // Calcite: auto-update is switched off until Calcite has its own release feed
+    // (the updater binary is still built, the installer needs it)
+    return false;
 }
 
 QString Application::updaterBinaryName()
