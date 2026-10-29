@@ -47,6 +47,7 @@
 #include "net/ChecksumValidator.h"
 #include "net/NetJob.h"
 
+#include "CalciteTranslator.h"
 #include "POTranslator.h"
 
 #include "Application.h"
@@ -166,6 +167,7 @@ struct TranslationsModel::Private {
     QString m_selectedLanguage = g_defaultLangCode;
     std::unique_ptr<QTranslator> m_qtTranslator;
     std::unique_ptr<QTranslator> m_appTranslator;
+    std::unique_ptr<QTranslator> m_calciteTranslator;
 
     Net::Request* m_indexTask = nullptr;
     QString m_downloadingTranslation;
@@ -457,6 +459,10 @@ bool TranslationsModel::selectLanguage(QString key) const
     }
 
     // uninstall existing translators if there are any
+    if (d->m_calciteTranslator) {
+        QCoreApplication::removeTranslator(d->m_calciteTranslator.get());
+        d->m_calciteTranslator.reset();
+    }
     if (d->m_appTranslator) {
         QCoreApplication::removeTranslator(d->m_appTranslator.get());
         d->m_appTranslator.reset();
@@ -525,6 +531,14 @@ bool TranslationsModel::selectLanguage(QString key) const
         }
     } else {
         d->m_appTranslator.reset();
+    }
+    // Calcite's own translations go last so they take priority over the downloaded ones
+    if (CalciteTranslator::supports(langCode)) {
+        d->m_calciteTranslator = std::make_unique<CalciteTranslator>(langCode);
+        if (!QCoreApplication::installTranslator(d->m_calciteTranslator.get())) {
+            qCritical() << "Installing Calcite Language File failed.";
+            d->m_calciteTranslator.reset();
+        }
     }
     d->m_selectedLanguage = langCode;
     return successful;

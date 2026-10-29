@@ -437,6 +437,8 @@ set(TRANSLATIONS_SOURCES
     translations/TranslationsModel.cpp
     translations/POTranslator.h
     translations/POTranslator.cpp
+    translations/CalciteTranslator.h
+    translations/CalciteTranslator.cpp
 )
 
 set(TOOLS_SOURCES
@@ -852,6 +854,8 @@ SET(LAUNCHER_SOURCES
     ui/themes/CustomTheme.h
     ui/themes/DarkTheme.cpp
     ui/themes/DarkTheme.h
+    ui/themes/CalciteTheme.cpp
+    ui/themes/CalciteTheme.h
     ui/themes/ITheme.cpp
     ui/themes/ITheme.h
     ui/themes/HintOverrideProxyStyle.cpp

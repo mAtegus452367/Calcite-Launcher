@@ -650,7 +650,7 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
 
         // Theming
         m_settings->registerSetting("IconTheme", QString());
-        m_settings->registerSetting("ApplicationTheme", QString());
+        m_settings->registerSetting("ApplicationTheme", QString("calcite"));
         m_settings->registerSetting("BackgroundCat", QString("kitteh"));
 
         // Remembered state
@@ -1284,9 +1284,9 @@ bool Application::createSetupWizard()
         }
         if (!validWidgets) {
 #if defined(Q_OS_LINUX)
-            const QString style = "system";
+            const QString style = "calcite";
 #else
-            const QString style = darkMode ? QStringLiteral("dark") : QStringLiteral("bright");
+            const QString style = "calcite";
 
 #endif
 
