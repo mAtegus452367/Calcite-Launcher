@@ -12,8 +12,10 @@ namespace {
 const QHash<QString, QString>& russianTable()
 {
     static const QHash<QString, QString> table = {
-        { QStringLiteral("Calcite Launcher's own dark blue theme"),
-          QStringLiteral("Собственная тёмно-синяя тема Calcite Launcher") },
+        { QStringLiteral("Calcite Dark"), QStringLiteral("Calcite Тёмная") },
+        { QStringLiteral("Calcite Light"), QStringLiteral("Calcite Светлая") },
+        { QStringLiteral("Calcite Launcher's own dark theme"), QStringLiteral("Собственная тёмная тема Calcite Launcher") },
+        { QStringLiteral("Calcite Launcher's own light theme"), QStringLiteral("Собственная светлая тема Calcite Launcher") },
         { QStringLiteral("Add offline account"),
           QStringLiteral("Добавить офлайн-аккаунт") },
         { QStringLiteral("<html><head/><body><p><span style=\" font-size:14pt; font-weight:600;\">Add account</span></p></body></html>"),

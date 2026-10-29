@@ -147,7 +147,8 @@ void ThemeManager::initializeWidgets()
     auto darkThemeId = addTheme(std::make_unique<DarkTheme>());
     themeDebugLog() << "Loading Built-in Theme:" << darkThemeId;
     themeDebugLog() << "Loading Built-in Theme:" << addTheme(std::make_unique<BrightTheme>());
-    themeDebugLog() << "Loading Built-in Theme:" << addTheme(std::make_unique<CalciteTheme>());
+    themeDebugLog() << "Loading Built-in Theme:" << addTheme(std::make_unique<CalciteTheme>(false));
+    themeDebugLog() << "Loading Built-in Theme:" << addTheme(std::make_unique<CalciteTheme>(true));
 
     themeDebugLog() << "<> Initializing System Widget Themes";
     QStringList styles = QStyleFactory::keys();

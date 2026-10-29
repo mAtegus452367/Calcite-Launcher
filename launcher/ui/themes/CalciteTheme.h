@@ -7,9 +7,10 @@
 
 #include "FusionTheme.h"
 
-// Calcite Launcher's own dark theme: deep navy gradient, glass panels, accent buttons.
+// Calcite Launcher's own themes (dark "black + cards" and light), styled after modern iOS-like launchers.
 class CalciteTheme : public FusionTheme {
    public:
+    explicit CalciteTheme(bool light = false) : m_light(light) {}
     virtual ~CalciteTheme() {}
 
     QString id() override;
@@ -20,4 +21,7 @@ class CalciteTheme : public FusionTheme {
     QPalette colorScheme() override;
     double fadeAmount() override;
     QColor fadeColor() override;
+
+   private:
+    bool m_light;
 };

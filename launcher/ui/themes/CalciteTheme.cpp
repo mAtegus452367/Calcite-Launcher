@@ -5,35 +5,80 @@
  */
 #include "CalciteTheme.h"
 
+#include <QDir>
+#include <QImage>
 #include <QObject>
+#include <QPainter>
+#include <QStandardPaths>
+
+namespace {
+
+struct Tokens {
+    QString bg, card, card2, card3, border, text, muted, accent, accentH, accentP, green;
+};
+
+Tokens tokens(bool light)
+{
+    if (light) {
+        return { "#f2f2f7", "#ffffff", "#e9e9ee", "#d8d8de", "#d1d1d6", "#000000", "#6c6c70", "#0a84ff", "#409cff", "#0060df", "#30d158" };
+    }
+    return { "#000000", "#1c1c1e", "#2c2c2e", "#3a3a3c", "#38383a", "#ffffff", "#8e8e93", "#0a84ff", "#409cff", "#0060df", "#30d158" };
+}
+
+// Draws one iOS-like switch and saves it as PNG (plus @2x for HiDPI); returns the 1x file path
+QString makeSwitch(const QString& dir, const QString& name, const QColor& track, bool on)
+{
+    auto render = [&](int scale) {
+        QImage img(44 * scale, 26 * scale, QImage::Format_ARGB32_Premultiplied);
+        img.fill(Qt::transparent);
+        QPainter p(&img);
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.setPen(Qt::NoPen);
+        p.setBrush(track);
+        p.drawRoundedRect(QRectF(0, 0, 44 * scale, 26 * scale), 13 * scale, 13 * scale);
+        p.setBrush(Qt::white);
+        const qreal d = 22 * scale;
+        const qreal x = on ? (44 - 2 - 22) * scale : 2 * scale;
+        p.drawEllipse(QRectF(x, 2 * scale, d, d));
+        return img;
+    };
+    const QString path1 = QDir(dir).filePath(name + ".png");
+    const QString path2 = QDir(dir).filePath(name + "@2x.png");
+    render(1).save(path1, "PNG");
+    render(2).save(path2, "PNG");
+    return path1;
+}
+
+}  // namespace
 
 QString CalciteTheme::id()
 {
-    return "calcite";
+    return m_light ? "calcite-light" : "calcite";
 }
 
 QString CalciteTheme::name()
 {
-    return QObject::tr("Calcite");
+    return m_light ? QObject::tr("Calcite Light") : QObject::tr("Calcite Dark");
 }
 
 QPalette CalciteTheme::colorScheme()
 {
+    const Tokens t = tokens(m_light);
     QPalette p;
-    p.setColor(QPalette::Window, QColor(17, 26, 54));
-    p.setColor(QPalette::WindowText, QColor(232, 236, 255));
-    p.setColor(QPalette::Base, QColor(11, 16, 32));
-    p.setColor(QPalette::AlternateBase, QColor(23, 32, 66));
-    p.setColor(QPalette::ToolTipBase, QColor(29, 40, 80));
-    p.setColor(QPalette::ToolTipText, Qt::white);
-    p.setColor(QPalette::Text, QColor(232, 236, 255));
-    p.setColor(QPalette::Button, QColor(27, 39, 84));
-    p.setColor(QPalette::ButtonText, QColor(232, 236, 255));
+    p.setColor(QPalette::Window, QColor(t.bg));
+    p.setColor(QPalette::WindowText, QColor(t.text));
+    p.setColor(QPalette::Base, QColor(t.card));
+    p.setColor(QPalette::AlternateBase, QColor(t.card2));
+    p.setColor(QPalette::ToolTipBase, QColor(t.card));
+    p.setColor(QPalette::ToolTipText, QColor(t.text));
+    p.setColor(QPalette::Text, QColor(t.text));
+    p.setColor(QPalette::Button, QColor(t.card2));
+    p.setColor(QPalette::ButtonText, QColor(t.text));
     p.setColor(QPalette::BrightText, Qt::red);
-    p.setColor(QPalette::Link, QColor(122, 184, 255));
-    p.setColor(QPalette::Highlight, QColor(90, 169, 255));
-    p.setColor(QPalette::HighlightedText, QColor(11, 16, 32));
-    p.setColor(QPalette::PlaceholderText, QColor(120, 131, 170));
+    p.setColor(QPalette::Link, QColor(t.accent));
+    p.setColor(QPalette::Highlight, QColor(t.accent));
+    p.setColor(QPalette::HighlightedText, Qt::white);
+    p.setColor(QPalette::PlaceholderText, QColor(t.muted));
     return fadeInactive(p, fadeAmount(), fadeColor());
 }
 
@@ -44,7 +89,7 @@ double CalciteTheme::fadeAmount()
 
 QColor CalciteTheme::fadeColor()
 {
-    return QColor(17, 26, 54);
+    return QColor(tokens(m_light).bg);
 }
 
 bool CalciteTheme::hasStyleSheet()
@@ -54,170 +99,120 @@ bool CalciteTheme::hasStyleSheet()
 
 QString CalciteTheme::appStyleSheet()
 {
-    return QStringLiteral(R"CALCITEQSS(
-/* ---------- Base ---------- */
-QMainWindow, QDialog, QWizard, QWizardPage {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #0b1020, stop:0.55 #111a36, stop:1 #1a1440);
-    color: #e8ecff;
-}
+    const Tokens t = tokens(m_light);
+
+    // Switch images live in the temp folder; QSS can only reference files/resources
+    const QString dir = QDir(QStandardPaths::writableLocation(QStandardPaths::TempLocation)).filePath("calcite-theme");
+    QDir().mkpath(dir);
+    const QString suffix = m_light ? "light" : "dark";
+    const QString swOff = makeSwitch(dir, "switch-off-" + suffix, QColor(t.card3), false);
+    const QString swOn = makeSwitch(dir, "switch-on-" + suffix, QColor(t.green), true);
+
+    QString qss = QStringLiteral(R"CALCITEQSS(
+/* ===== Base ===== */
+QMainWindow, QDialog, QWizard, QWizardPage { background: @BG@; color: @TEXT@; }
 QWidget#centralWidget { background: transparent; }
-QWidget { color: #e8ecff; selection-background-color: #5aa9ff; selection-color: #0b1020; }
+QWidget { color: @TEXT@; selection-background-color: @ACCENT@; selection-color: #ffffff; }
 QLabel { background: transparent; }
 QStackedWidget, QScrollArea { background: transparent; border: none; }
 
-/* ---------- Toolbars / menus ---------- */
-QToolBar {
-    background: rgba(23, 32, 66, 0.82);
-    border: none;
-    border-bottom: 1px solid #2a3668;
-    spacing: 4px;
-    padding: 4px;
-}
-QToolBar#newsToolBar { border-top: 1px solid #2a3668; border-bottom: none; }
-QToolButton {
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    padding: 5px 8px;
-    color: #e8ecff;
-}
-QToolButton:hover { background: rgba(90, 169, 255, 0.18); border: 1px solid #3d5199; }
-QToolButton:pressed, QToolButton:checked { background: rgba(124, 107, 255, 0.35); border: 1px solid #7c6bff; }
+/* ===== Toolbars / menus ===== */
+QToolBar { background: @CARD@; border: none; spacing: 6px; padding: 6px; }
+QToolBar#newsToolBar { background: transparent; }
+QToolButton { background: transparent; border: none; border-radius: 12px; padding: 6px 10px; color: @TEXT@; }
+QToolButton:hover { background: @CARD2@; }
+QToolButton:pressed, QToolButton:checked { background: @ACCENT@; color: #ffffff; }
 QToolButton::menu-indicator { image: none; }
 
-QMenuBar { background: rgba(11, 16, 32, 0.9); color: #e8ecff; border-bottom: 1px solid #2a3668; }
-QMenuBar::item { background: transparent; padding: 5px 10px; border-radius: 6px; }
-QMenuBar::item:selected { background: rgba(90, 169, 255, 0.22); }
-QMenu {
-    background: #141c3a;
-    border: 1px solid #2a3668;
-    border-radius: 8px;
-    padding: 6px;
-}
-QMenu::item { padding: 6px 26px 6px 22px; border-radius: 6px; }
-QMenu::item:selected { background: #2b4fa3; color: #ffffff; }
-QMenu::item:disabled { color: #5d678f; }
-QMenu::separator { height: 1px; background: #2a3668; margin: 5px 8px; }
+QMenuBar { background: @BG@; color: @TEXT@; }
+QMenuBar::item { background: transparent; padding: 6px 12px; border-radius: 10px; }
+QMenuBar::item:selected { background: @CARD2@; }
+QMenu { background: @CARD@; border: 1px solid @BORDER@; border-radius: 14px; padding: 6px; }
+QMenu::item { padding: 7px 28px 7px 22px; border-radius: 9px; }
+QMenu::item:selected { background: @ACCENT@; color: #ffffff; }
+QMenu::item:disabled { color: @MUTED@; }
+QMenu::separator { height: 1px; background: @BORDER@; margin: 5px 8px; }
+QStatusBar { background: @BG@; color: @MUTED@; }
 
-QStatusBar { background: rgba(11, 16, 32, 0.9); color: #8d98c4; border-top: 1px solid #2a3668; }
+/* ===== Buttons (pills) ===== */
+QPushButton { background: @CARD2@; border: none; border-radius: 15px; padding: 8px 20px; color: @TEXT@; }
+QPushButton:hover { background: @CARD3@; }
+QPushButton:pressed { background: @BORDER@; }
+QPushButton:default { background: @ACCENT@; color: #ffffff; }
+QPushButton:default:hover { background: @ACCENT_H@; }
+QPushButton:default:pressed { background: @ACCENT_P@; }
+QPushButton:disabled { background: @CARD@; color: @MUTED@; }
+QDialogButtonBox QPushButton { min-width: 90px; }
 
-/* ---------- Buttons ---------- */
-QPushButton {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #24336b, stop:1 #1b2754);
-    border: 1px solid #34458a;
-    border-radius: 9px;
-    padding: 6px 16px;
-    color: #e8ecff;
-}
-QPushButton:hover {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b6fd8, stop:1 #5a52e0);
-    border: 1px solid #7fb4ff;
-    color: #ffffff;
-}
-QPushButton:pressed { background: #2b3f8f; border: 1px solid #5aa9ff; }
-QPushButton:default { border: 1px solid #5aa9ff; }
-QPushButton:disabled { background: #151c38; border: 1px solid #222c55; color: #5d678f; }
-QDialogButtonBox QPushButton { min-width: 84px; }
-
-/* ---------- Inputs ---------- */
+/* ===== Inputs ===== */
 QLineEdit, QPlainTextEdit, QTextEdit, QTextBrowser, QSpinBox, QDoubleSpinBox, QComboBox {
-    background: rgba(11, 16, 32, 0.85);
-    border: 1px solid #2f3d78;
-    border-radius: 8px;
-    padding: 4px 8px;
-    color: #e8ecff;
+    background: @CARD2@; border: 2px solid transparent; border-radius: 13px; padding: 6px 12px; color: @TEXT@;
 }
-QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
-    border: 1px solid #5aa9ff;
-}
-QComboBox::drop-down { border: none; width: 22px; }
-QComboBox QAbstractItemView {
-    background: #141c3a;
-    border: 1px solid #2a3668;
-    selection-background-color: #2b4fa3;
-    outline: none;
-}
-QCheckBox, QRadioButton { background: transparent; spacing: 8px; }
-QCheckBox::indicator, QRadioButton::indicator { width: 16px; height: 16px; }
-QCheckBox::indicator { border: 1px solid #3d5199; border-radius: 4px; background: #0b1020; }
-QCheckBox::indicator:checked { background: #5aa9ff; border: 1px solid #9cc9ff; }
-QRadioButton::indicator { border: 1px solid #3d5199; border-radius: 9px; background: #0b1020; }
-QRadioButton::indicator:checked { background: #5aa9ff; border: 1px solid #9cc9ff; }
+QLineEdit:focus, QPlainTextEdit:focus, QTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border: 2px solid @ACCENT@; }
+QComboBox::drop-down { border: none; width: 26px; }
+QComboBox QAbstractItemView { background: @CARD@; border: 1px solid @BORDER@; border-radius: 12px; selection-background-color: @ACCENT@; outline: none; padding: 4px; }
+QRadioButton { background: transparent; spacing: 8px; }
+QRadioButton::indicator { width: 18px; height: 18px; border-radius: 10px; border: 2px solid @MUTED@; background: transparent; }
+QRadioButton::indicator:checked { border: 6px solid @ACCENT@; background: #ffffff; }
 
-/* ---------- Lists, trees, tables (incl. the instance view) ---------- */
-QAbstractItemView {
-    background: rgba(11, 16, 32, 0.55);
-    alternate-background-color: rgba(23, 32, 66, 0.55);
-    border: 1px solid #2a3668;
-    border-radius: 10px;
-    outline: none;
-    color: #e8ecff;
-}
-QAbstractItemView::item:hover { background: rgba(90, 169, 255, 0.15); }
-QAbstractItemView::item:selected { background: rgba(90, 169, 255, 0.35); color: #ffffff; }
-QHeaderView::section {
-    background: #172042;
-    color: #8d98c4;
-    border: none;
-    border-right: 1px solid #2a3668;
-    border-bottom: 1px solid #2a3668;
-    padding: 5px 8px;
-}
-QTableCornerButton::section { background: #172042; border: none; }
+/* iOS-style switch (images are generated at startup) */
+QCheckBox { background: transparent; spacing: 10px; }
+QCheckBox::indicator { width: 44px; height: 26px; }
+QCheckBox::indicator:unchecked { image: url("@SW_OFF@"); }
+QCheckBox::indicator:checked { image: url("@SW_ON@"); }
 
-/* ---------- Tabs / groups ---------- */
-QTabWidget::pane { border: 1px solid #2a3668; border-radius: 10px; background: rgba(23, 32, 66, 0.55); top: -1px; }
-QTabBar::tab {
-    background: transparent;
-    color: #8d98c4;
-    padding: 7px 16px;
-    border: 1px solid transparent;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-}
-QTabBar::tab:selected { background: rgba(23, 32, 66, 0.95); color: #ffffff; border: 1px solid #2a3668; border-bottom: none; }
-QTabBar::tab:hover:!selected { color: #cfd8ff; }
-QGroupBox {
-    background: rgba(23, 32, 66, 0.45);
-    border: 1px solid #2a3668;
-    border-radius: 10px;
-    margin-top: 14px;
-    padding-top: 10px;
-}
-QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 6px; color: #9cc9ff; }
+/* ===== Lists / trees (incl. the instance view) as cards ===== */
+QAbstractItemView { background: @CARD@; alternate-background-color: @CARD2@; border: none; border-radius: 18px; outline: none; color: @TEXT@; }
+QAbstractItemView::item { border-radius: 10px; }
+QAbstractItemView::item:hover { background: @CARD2@; }
+QAbstractItemView::item:selected { background: @ACCENT@; color: #ffffff; }
+QHeaderView::section { background: @CARD@; color: @MUTED@; border: none; padding: 7px 10px; }
+QTableCornerButton::section { background: @CARD@; border: none; }
 
-/* ---------- Scrollbars ---------- */
+/* ===== Tabs / groups as cards ===== */
+QTabWidget::pane { border: none; border-radius: 18px; background: @CARD@; top: -1px; }
+QTabBar::tab { background: transparent; color: @MUTED@; padding: 8px 18px; border-radius: 13px; margin: 2px; }
+QTabBar::tab:selected { background: @CARD2@; color: @TEXT@; }
+QTabBar::tab:hover:!selected { color: @TEXT@; }
+QGroupBox { background: @CARD@; border: none; border-radius: 18px; margin-top: 16px; padding: 18px 12px 12px 12px; }
+QGroupBox::title { subcontrol-origin: margin; left: 16px; padding: 0 6px; color: @TEXT@; font-weight: 600; }
+
+/* ===== Scrollbars ===== */
 QScrollBar:vertical { background: transparent; width: 12px; margin: 2px; }
-QScrollBar::handle:vertical { background: #34458a; border-radius: 4px; min-height: 28px; }
-QScrollBar::handle:vertical:hover { background: #5aa9ff; }
+QScrollBar::handle:vertical { background: @CARD3@; border-radius: 4px; min-height: 30px; }
+QScrollBar::handle:vertical:hover { background: @MUTED@; }
 QScrollBar:horizontal { background: transparent; height: 12px; margin: 2px; }
-QScrollBar::handle:horizontal { background: #34458a; border-radius: 4px; min-width: 28px; }
-QScrollBar::handle:horizontal:hover { background: #5aa9ff; }
+QScrollBar::handle:horizontal { background: @CARD3@; border-radius: 4px; min-width: 30px; }
+QScrollBar::handle:horizontal:hover { background: @MUTED@; }
 QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
 QScrollBar::add-page, QScrollBar::sub-page { background: transparent; }
 
-/* ---------- Progress / sliders / splitters ---------- */
-QProgressBar {
-    background: #0b1020;
-    border: 1px solid #2f3d78;
-    border-radius: 8px;
-    text-align: center;
-    color: #e8ecff;
-}
-QProgressBar::chunk {
-    border-radius: 7px;
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5aa9ff, stop:1 #7c6bff);
-}
-QSlider::groove:horizontal { height: 6px; background: #0b1020; border-radius: 3px; }
-QSlider::sub-page:horizontal { background: #5aa9ff; border-radius: 3px; }
-QSlider::handle:horizontal { background: #e8ecff; width: 14px; margin: -5px 0; border-radius: 7px; }
-QSplitter::handle { background: #2a3668; }
+/* ===== Progress / sliders ===== */
+QProgressBar { background: @CARD2@; border: none; border-radius: 9px; text-align: center; color: @TEXT@; min-height: 18px; }
+QProgressBar::chunk { border-radius: 9px; background: @ACCENT@; }
+QSlider::groove:horizontal { height: 6px; background: @CARD2@; border-radius: 3px; }
+QSlider::sub-page:horizontal { background: @ACCENT@; border-radius: 3px; }
+QSlider::handle:horizontal { background: #ffffff; border: 1px solid @BORDER@; width: 22px; height: 22px; margin: -9px 0; border-radius: 11px; }
+QSplitter::handle { background: transparent; }
 
-QToolTip { color: #ffffff; background-color: #1d2850; border: 1px solid #5aa9ff; border-radius: 6px; padding: 4px; }
+QToolTip { color: @TEXT@; background-color: @CARD@; border: 1px solid @BORDER@; border-radius: 8px; padding: 5px; }
 )CALCITEQSS");
+    qss.replace("@BG@", t.bg)
+        .replace("@CARD2@", t.card2)
+        .replace("@CARD3@", t.card3)
+        .replace("@CARD@", t.card)
+        .replace("@BORDER@", t.border)
+        .replace("@TEXT@", t.text)
+        .replace("@MUTED@", t.muted)
+        .replace("@ACCENT_H@", t.accentH)
+        .replace("@ACCENT_P@", t.accentP)
+        .replace("@ACCENT@", t.accent)
+        .replace("@SW_OFF@", QDir::fromNativeSeparators(swOff))
+        .replace("@SW_ON@", QDir::fromNativeSeparators(swOn));
+    return qss;
 }
 
 QString CalciteTheme::tooltip()
 {
-    return QObject::tr("Calcite Launcher's own dark blue theme");
+    return m_light ? QObject::tr("Calcite Launcher's own light theme") : QObject::tr("Calcite Launcher's own dark theme");
 }
